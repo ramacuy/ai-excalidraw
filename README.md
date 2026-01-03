@@ -1,73 +1,133 @@
-# React + TypeScript + Vite
+# AI Excalidraw
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+使用自然语言描述，让 AI 帮你绘制手绘风格流程图、架构图、示意图。
 
-Currently, two official plugins are available:
+## 功能特性
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- 🎨 **自然语言绘图** - 描述想要的图形，AI 自动生成 Excalidraw 元素
+- ⚡ **流式响应** - 实时查看 AI 生成过程，边生成边渲染
+- 💬 **多会话管理** - 支持创建多个独立聊天会话
+- 📱 **响应式设计** - 适配桌面和移动设备
+- 🔧 **灵活配置** - 支持 OpenAI 兼容的任意 API（OpenAI、智谱、阿里百炼等）
+- 💾 **本地存储** - 画布内容和聊天记录自动保存到浏览器
 
-## React Compiler
+## 快速开始
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 环境要求
 
-## Expanding the ESLint configuration
+- [Bun](https://bun.sh/) >= 1.0（推荐）或 Node.js >= 18
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 安装
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+```bash
+# 克隆项目
+git clone https://github.com/co-pine/ai-excalidraw.git
+cd ai-excalidraw
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# 安装依赖
+bun install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### 启动开发服务器
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+bun run dev
 ```
+
+访问 http://localhost:5173
+
+### 构建生产版本
+
+```bash
+bun run build
+```
+
+构建产物位于 `dist/` 目录。
+
+## 配置 AI API
+
+首次启动会自动弹出设置对话框，你需要配置：
+
+| 配置项 | 说明 | 示例 |
+|--------|------|------|
+| API Key | 你的 API 密钥 | sk-xxx |
+| Base URL | OpenAI 兼容的 API 地址 | https://api.openai.com/v1 |
+| Model | 模型名称 | gpt-4o |
+
+### 支持的 API 服务
+
+任何兼容 OpenAI Chat Completions API 的服务均可使用：
+
+- **OpenAI**: `https://api.openai.com/v1`
+- **智谱 AI**: `https://open.bigmodel.cn/api/paas/v4`
+- **阿里百炼**: `https://dashscope.aliyuncs.com/compatible-mode/v1`
+- **其他**: 任意 OpenAI 兼容的 API
+
+配置保存在浏览器 localStorage 中，刷新页面后无需重新配置。
+
+## 技术栈
+
+- **框架**: React 19 + TypeScript
+- **构建工具**: Vite
+- **样式**: Tailwind CSS v4
+- **绘图库**: [Excalidraw](https://excalidraw.com/)
+- **UI 组件**: Radix UI
+- **包管理**: Bun
+
+## 目录结构
+
+```
+ai-excalidraw/
+├── src/
+│   ├── components/
+│   │   ├── excalidraw/          # Excalidraw 相关组件
+│   │   │   ├── index.tsx        # 主编辑器组件，整合画布和聊天面板
+│   │   │   ├── wrapper.tsx      # Excalidraw 画布封装
+│   │   │   ├── chat-panel.tsx   # 桌面端 AI 聊天面板
+│   │   │   ├── mobile-input.tsx # 移动端 AI 输入组件
+│   │   │   ├── element-parser.ts # AI 输出解析器，提取 JSON 元素
+│   │   │   └── use-chat-history.ts # 聊天历史管理 Hook
+│   │   ├── ui/                  # 通用 UI 组件
+│   │   │   ├── button.tsx
+│   │   │   ├── card.tsx
+│   │   │   ├── input.tsx
+│   │   │   └── textarea.tsx
+│   │   └── settings-dialog.tsx  # API 配置对话框
+│   ├── lib/
+│   │   ├── ai.ts                # AI API 调用封装（流式请求）
+│   │   ├── prompt.ts            # Excalidraw 绘图系统提示词
+│   │   └── utils.ts             # 工具函数
+│   ├── App.tsx                  # 应用入口组件
+│   ├── main.tsx                 # React 挂载入口
+│   └── index.css                # 全局样式
+├── public/                      # 静态资源
+├── index.html                   # HTML 模板
+├── vite.config.ts               # Vite 配置
+├── tailwind.config.js           # Tailwind 配置
+├── tsconfig.json                # TypeScript 配置
+└── package.json
+```
+
+## 使用示例
+
+在聊天框中输入自然语言描述，例如：
+
+- "画一个简单的流程图：开始 → 处理 → 结束"
+- "画一个前后端分离的架构图"
+- "画一个用户登录的时序图"
+- "画一个 React 组件的生命周期图"
+
+AI 会自动生成对应的 Excalidraw 图形元素。
+
+## 开源协议
+
+[MIT](LICENSE)
+
+## 支持作者
+
+如果这个项目对你有帮助，欢迎请作者喝瓶水
+
+<img src="./assets/donate.jpg" alt="赞赏码" width="200" />
+
+
+
