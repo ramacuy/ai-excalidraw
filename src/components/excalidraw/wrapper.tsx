@@ -6,28 +6,79 @@ type ExcalidrawElement = any
 type ExcalidrawImperativeAPI = any
 import '@excalidraw/excalidraw/index.css'
 
+export interface ElementSummary {
+  id: string
+  type: string
+  text?: string
+  x: number
+  y: number
+  width: number
+  height: number
+  strokeColor?: string
+  backgroundColor?: string
+}
+
 export interface ExcalidrawWrapperRef {
   addElements: (elements: ExcalidrawElement[]) => void
   clearCanvas: () => void
   getElements: () => readonly ExcalidrawElement[]
+  getSelectedElements: () => ExcalidrawElement[]
+  getCanvasState: () => ElementSummary[]
+  getSelectedElementsSummary: () => ElementSummary[]
+  /** 
+   * 切换到指定会话的画布（会自动保存当前画布）
+   * @param sessionId 目标会话 ID
+   * @param useIndependentCanvas 是否使用独立画布（新会话为 true，老会话为 false）
+   */
+  switchToSession: (sessionId: string | null, useIndependentCanvas?: boolean) => void
+  /** 获取当前会话 ID */
+  getCurrentSessionId: () => string | null
+  /** 检查 Excalidraw API 是否已准备好 */
+  isReady: () => boolean
 }
 
 interface ExcalidrawWrapperProps {
   className?: string
   onElementsChange?: (elements: readonly ExcalidrawElement[]) => void
+  onSelectionChange?: (selectedElements: ExcalidrawElement[]) => void
   zenModeEnabled?: boolean // 禅模式：隐藏大部分 UI 元素
+  /** 初始会话 ID */
+  initialSessionId?: string | null
 }
 
-const STORAGE_KEY = 'excalidraw-canvas-data'
+const STORAGE_KEY_BASE = 'excalidraw-canvas-data'
+// 兼容性：共享画布 key（用于老会话）
+const SHARED_STORAGE_KEY = 'excalidraw-canvas-data'
+
+/**
+ * 获取会话对应的存储 key
+ * @param sessionId 会话 ID
+ * @param useIndependentCanvas 是否使用独立画布
+ */
+function getStorageKey(sessionId: string | null, useIndependentCanvas: boolean): string {
+  // 老会话（useIndependentCanvas 为 false）或无会话时，使用共享画布
+  if (!useIndependentCanvas || !sessionId) return SHARED_STORAGE_KEY
+  // 新会话使用独立画布
+  return `${STORAGE_KEY_BASE}-${sessionId}`
+}
 
 /**
  * 从 localStorage 加载画布数据
+ * @param sessionId 会话 ID
+ * @param useIndependentCanvas 是否使用独立画布
+ * @returns 数据对象，或 null 表示没有该会话的数据
  */
-function loadCanvasData(): { elements: ExcalidrawElement[] } | null {
+function loadCanvasData(sessionId: string | null, useIndependentCanvas: boolean): { elements: ExcalidrawElement[] } | null {
   if (typeof window === 'undefined') return null
+  
+  const storageKey = getStorageKey(sessionId, useIndependentCanvas)
+  
   try {
-    const data = localStorage.getItem(STORAGE_KEY)
+    const data = localStorage.getItem(storageKey)
+    
+    // 没有数据，返回 null（让调用方决定如何处理）
     if (!data) return null
+    
     const parsed = JSON.parse(data)
     // 确保 elements 是数组且每个元素都有效
     if (parsed && Array.isArray(parsed.elements)) {
@@ -35,37 +86,61 @@ function loadCanvasData(): { elements: ExcalidrawElement[] } | null {
       const validElements = parsed.elements.filter((el: ExcalidrawElement) => 
         el && el.id && el.type && typeof el.x === 'number' && typeof el.y === 'number'
       )
-      if (validElements.length > 0) {
-        return { elements: validElements }
-      }
+      return { elements: validElements }
     }
     // 数据无效，清除它
-    localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(storageKey)
     return null
   } catch {
     // 解析失败，清除损坏的数据
-    localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(getStorageKey(sessionId, useIndependentCanvas))
     return null
   }
 }
 
 /**
  * 保存画布数据到 localStorage
+ * @param elements 画布元素
+ * @param sessionId 会话 ID
+ * @param useIndependentCanvas 是否使用独立画布
  */
-function saveCanvasData(elements: readonly ExcalidrawElement[]): void {
+function saveCanvasData(elements: readonly ExcalidrawElement[], sessionId: string | null, useIndependentCanvas: boolean): void {
   if (typeof window === 'undefined') return
+  const storageKey = getStorageKey(sessionId, useIndependentCanvas)
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ elements }))
+    localStorage.setItem(storageKey, JSON.stringify({ elements }))
   } catch {
     console.warn('Failed to save canvas data')
   }
 }
 
+/**
+ * 将元素转换为摘要格式
+ */
+function summarizeElement(el: ExcalidrawElement): ElementSummary {
+  return {
+    id: el.id,
+    type: el.type,
+    text: el.text,
+    x: el.x,
+    y: el.y,
+    width: el.width,
+    height: el.height,
+    strokeColor: el.strokeColor,
+    backgroundColor: el.backgroundColor,
+  }
+}
+
 export const ExcalidrawWrapper = forwardRef<ExcalidrawWrapperRef, ExcalidrawWrapperProps>(
-  function ExcalidrawWrapper({ className, onElementsChange, zenModeEnabled = false }, ref) {
+  function ExcalidrawWrapper({ className, onElementsChange, onSelectionChange, zenModeEnabled = false, initialSessionId = null }, ref) {
     const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI | null>(null)
-    // 使用懒初始化确保首次渲染时就有数据
-    const [initialData] = useState(() => loadCanvasData())
+    const lastSelectedIdsRef = useRef<string[]>([])
+    // 当前会话 ID
+    const currentSessionIdRef = useRef<string | null>(initialSessionId)
+    // 当前是否使用独立画布（初始默认 false，即使用共享画布）
+    const currentUseIndependentCanvasRef = useRef<boolean>(false)
+    // 使用懒初始化确保首次渲染时就有数据（初始加载共享画布）
+    const [initialData] = useState(() => loadCanvasData(initialSessionId, false))
 
     // 暴露方法给父组件
     useImperativeHandle(ref, () => ({
@@ -75,44 +150,143 @@ export const ExcalidrawWrapper = forwardRef<ExcalidrawWrapperRef, ExcalidrawWrap
 
         const currentElements = api.getSceneElements()
         const existingIds = new Set(currentElements.map((el: ExcalidrawElement) => el.id))
-        
-        // 处理元素，如果 id 冲突则生成新 id
-        const elementsToAdd = newElements.map(el => {
+
+        // 分离需要更新的元素和需要添加的新元素
+        const elementsToUpdate: ExcalidrawElement[] = []
+        const elementsToAdd: ExcalidrawElement[] = []
+
+        newElements.forEach(el => {
           if (existingIds.has(el.id)) {
-            // id 冲突，生成新 id
-            const newId = `${el.id}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-            existingIds.add(newId) // 防止同批次元素 id 冲突
-            return { ...el, id: newId }
+            // ID 已存在，更新该元素
+            elementsToUpdate.push(el)
+          } else {
+            // 新元素，添加到画布
+            elementsToAdd.push(el)
+            existingIds.add(el.id)
           }
-          existingIds.add(el.id)
-          return el
         })
-        
-        if (elementsToAdd.length > 0) {
-          api.updateScene({
-            elements: [...currentElements, ...elementsToAdd],
+
+        // 构建新的元素列表
+        let updatedElements = [...currentElements]
+
+        // 更新已存在的元素
+        if (elementsToUpdate.length > 0) {
+          updatedElements = updatedElements.map(existingEl => {
+            const update = elementsToUpdate.find(el => el.id === existingEl.id)
+            return update ? { ...existingEl, ...update } : existingEl
           })
         }
+
+        // 添加新元素
+        if (elementsToAdd.length > 0) {
+          updatedElements = [...updatedElements, ...elementsToAdd]
+        }
+
+        api.updateScene({
+          elements: updatedElements,
+        })
       },
       clearCanvas: () => {
         const api = excalidrawAPIRef.current
         if (!api) return
         api.updateScene({ elements: [] })
-        localStorage.removeItem(STORAGE_KEY)
+        // 清除当前会话的画布数据
+        const storageKey = getStorageKey(currentSessionIdRef.current, currentUseIndependentCanvasRef.current)
+        localStorage.removeItem(storageKey)
       },
       getElements: () => {
         const api = excalidrawAPIRef.current
         return api ? api.getSceneElements() : []
       },
+      getSelectedElements: () => {
+        const api = excalidrawAPIRef.current
+        if (!api) return []
+        try {
+          const appState = api.getAppState()
+          const selectedElementIds = appState?.selectedElementIds || {}
+          return api.getSceneElements().filter((el: ExcalidrawElement) =>
+            selectedElementIds[el.id] === true
+          )
+        } catch {
+          return []
+        }
+      },
+      getCanvasState: () => {
+        const api = excalidrawAPIRef.current
+        if (!api) return []
+        return api.getSceneElements().map(summarizeElement)
+      },
+      getSelectedElementsSummary: () => {
+        const api = excalidrawAPIRef.current
+        if (!api) return []
+        try {
+          const appState = api.getAppState()
+          const selectedElementIds = appState?.selectedElementIds || {}
+          return api.getSceneElements()
+            .filter((el: ExcalidrawElement) => selectedElementIds[el.id] === true)
+            .map(summarizeElement)
+        } catch {
+          return []
+        }
+      },
+      switchToSession: (sessionId: string | null, useIndependentCanvas = false) => {
+        const api = excalidrawAPIRef.current
+        if (!api) return
+
+        // 保存当前画布到当前会话
+        const currentElements = api.getSceneElements()
+        const activeElements = currentElements.filter((el: ExcalidrawElement) => !el.isDeleted)
+        saveCanvasData(activeElements, currentSessionIdRef.current, currentUseIndependentCanvasRef.current)
+
+        // 更新当前会话状态
+        currentSessionIdRef.current = sessionId
+        currentUseIndependentCanvasRef.current = useIndependentCanvas
+
+        // 加载目标会话的画布数据
+        const newData = loadCanvasData(sessionId, useIndependentCanvas)
+        
+        if (newData) {
+          // 有数据，加载
+          api.updateScene({ elements: newData.elements })
+        } else if (useIndependentCanvas) {
+          // 新会话且没有数据，显示空画布
+          api.updateScene({ elements: [] })
+        }
+        // 老会话没有数据时，保持当前画布（共享画布已经加载）
+      },
+      getCurrentSessionId: () => currentSessionIdRef.current,
+      isReady: () => excalidrawAPIRef.current !== null,
     }), [])
 
     // 处理变更
-    const handleChange = useCallback((elements: readonly ExcalidrawElement[]) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const handleChange = useCallback((elements: readonly ExcalidrawElement[], appState: any) => {
       // 过滤掉已删除的元素
       const activeElements = elements.filter(el => !el.isDeleted)
-      saveCanvasData(activeElements)
+      // 保存到当前会话的存储
+      saveCanvasData(activeElements, currentSessionIdRef.current, currentUseIndependentCanvasRef.current)
       onElementsChange?.(activeElements)
-    }, [onElementsChange])
+
+      // 检查选择变化（使用传入的 appState）
+      if (appState?.selectedElementIds) {
+        try {
+          const currentSelectedIds = appState.selectedElementIds
+          const currentKeys = Object.keys(currentSelectedIds).sort()
+          const lastKeys = lastSelectedIdsRef.current.sort()
+          const keysChanged = JSON.stringify(currentKeys) !== JSON.stringify(lastKeys)
+
+          if (keysChanged) {
+            lastSelectedIdsRef.current = currentKeys
+            const selectedElements = elements.filter((el: ExcalidrawElement) =>
+              currentSelectedIds[el.id] === true
+            )
+            onSelectionChange?.(selectedElements)
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }, [onElementsChange, onSelectionChange])
 
     return (
       <div className={className}>
@@ -141,4 +315,3 @@ export const ExcalidrawWrapper = forwardRef<ExcalidrawWrapperRef, ExcalidrawWrap
     )
   }
 )
-

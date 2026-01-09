@@ -11,22 +11,27 @@ import {
   MessageSquare, 
   ChevronLeft,
   ChevronRight,
-  Sparkles
+  Sparkles,
+  CheckSquare
 } from 'lucide-react'
 import { useChatHistory, type ChatMessage } from './use-chat-history'
 import { parseExcalidrawElements, type ExcalidrawElement } from './element-parser'
 import { streamChat, isConfigValid, getAIConfig } from '@/lib/ai'
+import type { ExcalidrawWrapperRef } from './wrapper'
 
 interface ChatPanelProps {
   className?: string
   onElementsGenerated?: (elements: ExcalidrawElement[]) => void
+  excalidrawRef?: React.RefObject<ExcalidrawWrapperRef | null>
 }
 
-export function ChatPanel({ className, onElementsGenerated }: ChatPanelProps) {
+export function ChatPanel({ className, onElementsGenerated, excalidrawRef }: ChatPanelProps) {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isComposing, setIsComposing] = useState(false) // 输入法组合状态
+  const [selectedCount, setSelectedCount] = useState(0) // 选中的元素数量
+  const [selectedElementIds, setSelectedElementIds] = useState<string[]>([]) // 选中元素的ID列表
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   
@@ -53,6 +58,72 @@ export function ChatPanel({ className, onElementsGenerated }: ChatPanelProps) {
   useEffect(() => {
     scrollToBottom()
   }, [currentSession?.messages, scrollToBottom])
+
+  // 更新选中状态
+  const updateSelectedCount = useCallback(() => {
+    if (!excalidrawRef?.current) return
+    try {
+      const count = excalidrawRef.current.getSelectedElements().length
+      setSelectedCount(count)
+    } catch (error) {
+      console.error('Error updating selected count:', error)
+    }
+  }, [excalidrawRef])
+
+  // 更新选中元素的ID列表
+  const updateSelectedElementIds = useCallback(() => {
+    if (!excalidrawRef?.current) return
+    try {
+      const selectedElements = excalidrawRef.current.getSelectedElementsSummary()
+      const ids = selectedElements.map(el => el.id)
+      setSelectedElementIds(ids)
+    } catch (error) {
+      console.error('Error updating selected element IDs:', error)
+    }
+  }, [excalidrawRef])
+
+  // 初始化时检查一次，并定时更新选中状态
+  useEffect(() => {
+    updateSelectedCount()
+    updateSelectedElementIds()
+
+    // 定时更新选中状态（每秒检查一次）
+    const interval = setInterval(() => {
+      updateSelectedCount()
+      updateSelectedElementIds()
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [updateSelectedCount, updateSelectedElementIds])
+
+  // 在会话加载完成且有当前会话时，同步画布
+  useEffect(() => {
+    if (!isLoaded || !currentSessionId) return
+
+    // 同步画布的函数
+    const syncCanvas = () => {
+      // 检查 excalidraw API 是否已准备好
+      if (!excalidrawRef?.current?.isReady()) return false
+      
+      const canvasSessionId = excalidrawRef.current.getCurrentSessionId()
+      if (canvasSessionId !== currentSessionId) {
+        excalidrawRef.current.switchToSession(currentSessionId, currentSession?.useIndependentCanvas ?? false)
+      }
+      return true
+    }
+
+    // 如果 excalidrawRef 已准备好，直接同步
+    if (syncCanvas()) return
+
+    // 否则等待 excalidraw API 准备好后重试
+    const interval = setInterval(() => {
+      if (syncCanvas()) {
+        clearInterval(interval)
+      }
+    }, 100)
+
+    return () => clearInterval(interval)
+  }, [isLoaded, currentSessionId, currentSession?.useIndependentCanvas, excalidrawRef])
 
   // 发送消息
   const handleSend = async () => {
@@ -83,6 +154,9 @@ export function ChatPanel({ className, onElementsGenerated }: ChatPanelProps) {
     let fullText = ''
     let processedLength = 0
 
+    // 获取选中的元素（如果有）
+    const selectedElements = excalidrawRef?.current?.getSelectedElementsSummary() || []
+
     await streamChat(
       userMessage,
       (chunk) => {
@@ -99,7 +173,9 @@ export function ChatPanel({ className, onElementsGenerated }: ChatPanelProps) {
       (error) => {
         console.error('Chat error:', error)
         updateMessage(sessionId!, assistantMessageId, `抱歉，发生了错误：${error.message}`)
-      }
+      },
+      undefined,
+      selectedElements // 传递选中的元素
     )
 
     // 最终解析
@@ -121,7 +197,9 @@ export function ChatPanel({ className, onElementsGenerated }: ChatPanelProps) {
 
   // 新建对话
   const handleNewChat = () => {
-    createSession()
+    const newSessionId = createSession()
+    // 切换到新会话的独立画布（新会话 useIndependentCanvas 为 true）
+    excalidrawRef?.current?.switchToSession(newSessionId, true)
     setIsSidebarOpen(false)
   }
 
@@ -164,6 +242,8 @@ export function ChatPanel({ className, onElementsGenerated }: ChatPanelProps) {
                   )}
                   onClick={() => {
                     switchSession(session.id)
+                    // 切换会话时同步切换画布（传递该会话是否使用独立画布）
+                    excalidrawRef?.current?.switchToSession(session.id, session.useIndependentCanvas ?? false)
                     setIsSidebarOpen(false)
                   }}
                 >
@@ -203,15 +283,19 @@ export function ChatPanel({ className, onElementsGenerated }: ChatPanelProps) {
             <Sparkles className="w-4 h-4 text-primary" />
             <span>AI 绘图助手</span>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="ml-auto gap-1.5 text-xs"
-            onClick={handleNewChat}
-          >
-            <Plus className="w-3.5 h-3.5" />
-            新对话
-          </Button>
+
+          {/* 顶部栏右侧 */}
+          {excalidrawRef && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-auto h-7 gap-1.5 text-xs"
+              onClick={handleNewChat}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              新对话
+            </Button>
+          )}
         </div>
 
         {/* 消息列表 */}
@@ -245,6 +329,35 @@ export function ChatPanel({ className, onElementsGenerated }: ChatPanelProps) {
           
           <div ref={messagesEndRef} />
         </div>
+
+        {/* 选中元素提示 */}
+        {selectedCount > 0 && (
+          <div className="px-3 py-2 bg-primary/10 border-b border-border">
+            <div className="flex items-center gap-2 text-xs">
+              <CheckSquare className="w-3.5 h-3.5 text-primary" />
+              <span className="font-medium text-primary">
+                已选中 {selectedCount} 个元素将发送给 AI
+              </span>
+            </div>
+            {selectedElementIds.length > 0 && (
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {selectedElementIds.slice(0, 10).map((id) => (
+                  <span
+                    key={id}
+                    className="px-1.5 py-0.5 rounded bg-background border border-border text-[10px] font-mono text-foreground/70"
+                  >
+                    {id.slice(0, 8)}
+                  </span>
+                ))}
+                {selectedElementIds.length > 10 && (
+                  <span className="px-1.5 py-0.5 text-[10px] text-foreground/50">
+                    ...等 {selectedElementIds.length} 个
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 输入区 */}
         <div className="p-3 border-t border-border bg-card">
@@ -390,4 +503,3 @@ function AssistantMessage({ content }: { content: string }) {
   
   return <>{displayContent}</>
 }
-

@@ -13,6 +13,8 @@ export interface ChatSession {
   messages: ChatMessage[]
   createdAt: number
   updatedAt: number
+  /** 是否使用独立画布（新会话为 true，老会话为 undefined/false） */
+  useIndependentCanvas?: boolean
 }
 
 const STORAGE_KEY = 'excalidraw-ai-chat-history'
@@ -88,6 +90,8 @@ export function useChatHistory() {
       messages: [],
       createdAt: Date.now(),
       updatedAt: Date.now(),
+      // 新会话使用独立画布
+      useIndependentCanvas: true,
     }
     setSessions(prev => [newSession, ...prev])
     setCurrentSessionId(newSession.id)
@@ -183,4 +187,3 @@ export function useChatHistory() {
     switchSession,
   }
 }
-

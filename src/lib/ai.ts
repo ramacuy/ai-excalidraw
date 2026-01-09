@@ -1,4 +1,5 @@
 import { EXCALIDRAW_SYSTEM_PROMPT } from './prompt'
+import type { ElementSummary } from '@/components/excalidraw/wrapper'
 
 export interface AIConfig {
   apiKey: string
@@ -66,13 +67,41 @@ export function isConfigValid(config: AIConfig): boolean {
 }
 
 /**
+ * 构建包含选中元素信息的用户消息
+ */
+function buildUserMessage(userMessage: string, selectedElements?: ElementSummary[]): string {
+  if (!selectedElements || selectedElements.length === 0) {
+    return userMessage
+  }
+
+  // 构建选中元素的上下文
+  const elementsContext = selectedElements.map(el => {
+    const parts = [`id: ${el.id}`, `type: ${el.type}`]
+    if (el.text) parts.push(`text: "${el.text}"`)
+    parts.push(`position: (${el.x}, ${el.y})`)
+    parts.push(`size: ${el.width}x${el.height}`)
+    if (el.strokeColor) parts.push(`strokeColor: ${el.strokeColor}`)
+    if (el.backgroundColor) parts.push(`backgroundColor: ${el.backgroundColor}`)
+    return `- ${parts.join(', ')}`
+  }).join('\n')
+
+  return `用户选中了以下 ${selectedElements.length} 个元素，请基于这些元素进行修改：
+${elementsContext}
+
+用户的请求：${userMessage}
+
+注意：修改现有元素时，请保持相同的 id，这样会更新而不是新建元素。`
+}
+
+/**
  * 流式调用 AI API
  */
 export async function streamChat(
   userMessage: string,
   onChunk: (content: string) => void,
   onError?: (error: Error) => void,
-  config?: AIConfig
+  config?: AIConfig,
+  selectedElements?: ElementSummary[]
 ): Promise<void> {
   const finalConfig = config || getAIConfig()
 
@@ -81,9 +110,12 @@ export async function streamChat(
     return
   }
 
+  // 构建带有选中元素上下文的用户消息
+  const contextualMessage = buildUserMessage(userMessage, selectedElements)
+
   const messages: ChatMessage[] = [
     { role: 'system', content: EXCALIDRAW_SYSTEM_PROMPT },
-    { role: 'user', content: userMessage },
+    { role: 'user', content: contextualMessage },
   ]
 
   try {
@@ -161,4 +193,3 @@ export async function streamChat(
     onError?.(error instanceof Error ? error : new Error(String(error)))
   }
 }
-

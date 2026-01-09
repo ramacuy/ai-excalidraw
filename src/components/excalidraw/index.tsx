@@ -38,6 +38,12 @@ export function ExcalidrawEditor({ className }: ExcalidrawEditorProps) {
     excalidrawRef.current?.addElements(elements as unknown as ExcalidrawElement[])
   }, [])
 
+  // 处理选择变化
+  const handleSelectionChange = useCallback((selectedElements: ExcalidrawElement[]) => {
+    // 这里可以通过状态传递给 ChatPanel，但为了简化，我们使用轮询方式在 ChatPanel 中检测
+    void selectedElements
+  }, [])
+
   // 清空画布
   const handleClearCanvas = useCallback(() => {
     if (confirm('确定要清空画布吗？')) {
@@ -94,6 +100,7 @@ export function ExcalidrawEditor({ className }: ExcalidrawEditorProps) {
             ref={excalidrawRef}
             className="h-full"
             zenModeEnabled={true}
+            onSelectionChange={handleSelectionChange}
           />
         </div>
 
@@ -108,7 +115,7 @@ export function ExcalidrawEditor({ className }: ExcalidrawEditorProps) {
     )
   }
 
-  // 桌面端布局（保持不变）
+  // 桌面端布局
   return (
     <div className={cn('flex h-full', className)}>
       {/* 左侧：AI 对话面板 */}
@@ -120,6 +127,7 @@ export function ExcalidrawEditor({ className }: ExcalidrawEditorProps) {
           <ChatPanel 
             className="flex-1 min-h-0"
             onElementsGenerated={handleElementsGenerated}
+            excalidrawRef={excalidrawRef}
           />
         )}
       </div>
@@ -161,6 +169,7 @@ export function ExcalidrawEditor({ className }: ExcalidrawEditorProps) {
         <ExcalidrawWrapper 
           ref={excalidrawRef}
           className="flex-1"
+          onSelectionChange={handleSelectionChange}
         />
       </div>
     </div>
@@ -168,4 +177,3 @@ export function ExcalidrawEditor({ className }: ExcalidrawEditorProps) {
 }
 
 export default ExcalidrawEditor
-
