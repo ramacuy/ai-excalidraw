@@ -74,20 +74,42 @@ function buildUserMessage(userMessage: string, selectedElements?: ElementSummary
     return userMessage
   }
 
-  // 构建选中元素的上下文
-  const elementsContext = selectedElements.map(el => {
+  // 分离主元素和绑定元素
+  const mainElements = selectedElements.filter(el => !el.containerId)
+  const boundElements = selectedElements.filter(el => el.containerId)
+
+  // 构建元素描述
+  const formatElement = (el: ElementSummary, indent = '') => {
     const parts = [`id: ${el.id}`, `type: ${el.type}`]
     if (el.text) parts.push(`text: "${el.text}"`)
     parts.push(`position: (${el.x}, ${el.y})`)
     parts.push(`size: ${el.width}x${el.height}`)
     if (el.strokeColor) parts.push(`strokeColor: ${el.strokeColor}`)
-    if (el.backgroundColor) parts.push(`backgroundColor: ${el.backgroundColor}`)
-    return `- ${parts.join(', ')}`
-  }).join('\n')
+    if (el.backgroundColor && el.backgroundColor !== 'transparent') {
+      parts.push(`backgroundColor: ${el.backgroundColor}`)
+    }
+    return `${indent}- ${parts.join(', ')}`
+  }
 
-  return `用户选中了以下 ${selectedElements.length} 个元素，请基于这些元素进行修改：
+  // 构建上下文
+  let elementsContext = ''
+  for (const el of mainElements) {
+    elementsContext += formatElement(el) + '\n'
+    // 添加该元素的绑定元素（如形状内的文字）
+    const children = boundElements.filter(b => b.containerId === el.id)
+    for (const child of children) {
+      elementsContext += formatElement(child, '  ') + ' (绑定在 ' + el.id + ' 内的文字)\n'
+    }
+  }
+  
+  // 添加没有父元素的绑定元素（理论上不应该发生）
+  const orphanBound = boundElements.filter(b => !mainElements.find(m => m.id === b.containerId))
+  for (const el of orphanBound) {
+    elementsContext += formatElement(el) + '\n'
+  }
+
+  return `用户选中了以下元素，请基于这些元素进行修改：
 ${elementsContext}
-
 用户的请求：${userMessage}
 
 注意：修改现有元素时，请保持相同的 id，这样会更新而不是新建元素。`

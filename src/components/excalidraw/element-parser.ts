@@ -3,35 +3,19 @@
  * 从 AI 返回的流式文本中解析 Excalidraw 元素（纯 JSON 格式）
  */
 
-export interface ExcalidrawElement {
+/**
+ * 解析后的元素（可能是完整新建元素或部分更新元素）
+ * - 新建元素：必须包含 id, type, x, y, width, height
+ * - 更新元素：只需包含 id 和要修改的属性
+ */
+export interface ParsedElement {
   id: string
-  type: 'rectangle' | 'ellipse' | 'diamond' | 'text' | 'arrow' | 'line'
-  x: number
-  y: number
-  width: number
-  height: number
-  angle: number
-  strokeColor: string
-  backgroundColor: string
-  fillStyle: 'solid' | 'hachure' | 'cross-hatch'
-  strokeWidth: number
-  roughness: number
-  opacity: number
-  seed: number
-  // text 元素特有
-  text?: string
-  fontSize?: number
-  fontFamily?: number
-  textAlign?: 'left' | 'center' | 'right'
-  verticalAlign?: 'top' | 'middle' | 'bottom'
-  // arrow/line 元素特有
-  points?: number[][]
-  startArrowhead?: 'arrow' | 'bar' | 'dot' | 'triangle' | null
-  endArrowhead?: 'arrow' | 'bar' | 'dot' | 'triangle' | null
+  type?: string
+  [key: string]: unknown
 }
 
 export interface ParseResult {
-  elements: ExcalidrawElement[]
+  elements: ParsedElement[]
   remainingBuffer: string
 }
 
@@ -101,6 +85,7 @@ function extractJsonObjects(text: string): { json: string; endIndex: number }[] 
 
 /**
  * 从文本中解析 Excalidraw 元素（纯 JSON 格式）
+ * 只解析 JSON，不添加默认值（默认值由调用方根据是否为新建元素决定）
  * @param text 完整的累积文本
  * @param processedLength 已处理的长度
  * @returns 解析结果
@@ -109,7 +94,7 @@ export function parseExcalidrawElements(
   text: string,
   processedLength: number = 0
 ): ParseResult {
-  const elements: ExcalidrawElement[] = []
+  const elements: ParsedElement[] = []
   const newText = text.slice(processedLength)
   
   // 提取所有完整的 JSON 对象
@@ -118,24 +103,12 @@ export function parseExcalidrawElements(
   
   for (const { json, endIndex } of jsonObjects) {
     try {
-      const element = JSON.parse(json) as ExcalidrawElement
+      const element = JSON.parse(json) as ParsedElement
       
-      // 验证是否为有效的 Excalidraw 元素
-      const validTypes = ['rectangle', 'ellipse', 'diamond', 'text', 'arrow', 'line']
-      if (
-        element.id && 
-        element.type && 
-        validTypes.includes(element.type) &&
-        typeof element.x === 'number' && 
-        typeof element.y === 'number'
-      ) {
-        // 添加默认值和类型特定字段
-        const finalElement = {
-          ...getDefaultElementProps(),
-          ...getTypeSpecificProps(element.type, element),
-          ...element,
-        }
-        elements.push(finalElement as ExcalidrawElement)
+      // 只验证 id 是否存在（更新元素只需要 id）
+      // 对于新建元素，还需要 type、x、y，但这由调用方验证
+      if (element.id) {
+        elements.push(element)
       }
       // 无论解析是否成功，都更新 lastIndex，避免卡住
       lastIndex = endIndex
@@ -158,7 +131,7 @@ export function parseExcalidrawElements(
 /**
  * 获取元素默认属性（包含 Excalidraw 必需字段）
  */
-function getDefaultElementProps(): Record<string, unknown> {
+export function getDefaultElementProps(): Record<string, unknown> {
   return {
     angle: 0,
     strokeColor: '#1e1e1e',
@@ -183,7 +156,7 @@ function getDefaultElementProps(): Record<string, unknown> {
 /**
  * 获取类型特定的默认属性
  */
-function getTypeSpecificProps(type: string, element: Partial<ExcalidrawElement>): Record<string, unknown> {
+export function getTypeSpecificProps(type: string, element: ParsedElement): Record<string, unknown> {
   if (type === 'text') {
     return {
       fontSize: 20,
@@ -192,14 +165,16 @@ function getTypeSpecificProps(type: string, element: Partial<ExcalidrawElement>)
       verticalAlign: 'middle',
       baseline: 18,
       containerId: null,
-      originalText: element.text || '',
+      originalText: (element.text as string) || '',
       lineHeight: 1.25,
     }
   }
   
   if (type === 'arrow' || type === 'line') {
+    const width = (element.width as number) || 100
+    const height = (element.height as number) || 0
     return {
-      points: element.points || [[0, 0], [element.width || 100, element.height || 0]],
+      points: element.points || [[0, 0], [width, height]],
       lastCommittedPoint: null,
       startBinding: null,
       endBinding: null,

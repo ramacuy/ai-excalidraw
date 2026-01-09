@@ -2,7 +2,7 @@ import { useRef, useCallback, useState, useEffect } from 'react'
 import { ExcalidrawWrapper, type ExcalidrawWrapperRef } from './wrapper'
 import { ChatPanel } from './chat-panel'
 import { MobileInput } from './mobile-input'
-import type { ExcalidrawElement } from './element-parser'
+import type { ParsedElement } from './element-parser'
 import { Button } from '@/components/ui/button'
 import { Trash2, PanelLeftClose, PanelLeft, Loader2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -34,12 +34,13 @@ export function ExcalidrawEditor({ className }: ExcalidrawEditorProps) {
   const isMobile = useIsMobile()
 
   // 处理 AI 生成的元素
-  const handleElementsGenerated = useCallback((elements: ExcalidrawElement[]) => {
-    excalidrawRef.current?.addElements(elements as unknown as ExcalidrawElement[])
+  const handleElementsGenerated = useCallback((elements: ParsedElement[]) => {
+    excalidrawRef.current?.addElements(elements)
   }, [])
 
   // 处理选择变化
-  const handleSelectionChange = useCallback((selectedElements: ExcalidrawElement[]) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleSelectionChange = useCallback((selectedElements: any[]) => {
     // 这里可以通过状态传递给 ChatPanel，但为了简化，我们使用轮询方式在 ChatPanel 中检测
     void selectedElements
   }, [])

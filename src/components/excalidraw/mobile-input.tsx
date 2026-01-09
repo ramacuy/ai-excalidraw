@@ -4,11 +4,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card } from '@/components/ui/card'
 import { Send, Loader2, Trash2 } from 'lucide-react'
 import { useChatHistory } from './use-chat-history'
-import { parseExcalidrawElements, type ExcalidrawElement } from './element-parser'
+import { parseExcalidrawElements, type ParsedElement } from './element-parser'
 import { streamChat, isConfigValid, getAIConfig } from '@/lib/ai'
 
 interface MobileInputProps {
-  onElementsGenerated?: (elements: ExcalidrawElement[]) => void
+  onElementsGenerated?: (elements: ParsedElement[]) => void
   onLoadingChange?: (loading: boolean) => void
   onClearCanvas?: () => void
   showToast?: (message: string, duration?: number) => void

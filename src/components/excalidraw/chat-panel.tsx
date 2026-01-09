@@ -15,13 +15,13 @@ import {
   CheckSquare
 } from 'lucide-react'
 import { useChatHistory, type ChatMessage } from './use-chat-history'
-import { parseExcalidrawElements, type ExcalidrawElement } from './element-parser'
+import { parseExcalidrawElements, type ParsedElement } from './element-parser'
 import { streamChat, isConfigValid, getAIConfig } from '@/lib/ai'
 import type { ExcalidrawWrapperRef } from './wrapper'
 
 interface ChatPanelProps {
   className?: string
-  onElementsGenerated?: (elements: ExcalidrawElement[]) => void
+  onElementsGenerated?: (elements: ParsedElement[]) => void
   excalidrawRef?: React.RefObject<ExcalidrawWrapperRef | null>
 }
 

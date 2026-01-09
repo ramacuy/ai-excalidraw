@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback, forwardRef, useImperativeHandle } from 'react'
 import { Excalidraw } from '@excalidraw/excalidraw'
+import { getDefaultElementProps, getTypeSpecificProps, type ParsedElement } from './element-parser'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ExcalidrawElement = any
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -16,10 +17,11 @@ export interface ElementSummary {
   height: number
   strokeColor?: string
   backgroundColor?: string
+  containerId?: string  // 如果是绑定在形状内的文字，这里是容器形状的 id
 }
 
 export interface ExcalidrawWrapperRef {
-  addElements: (elements: ExcalidrawElement[]) => void
+  addElements: (elements: ParsedElement[]) => void
   clearCanvas: () => void
   getElements: () => readonly ExcalidrawElement[]
   getSelectedElements: () => ExcalidrawElement[]
@@ -116,18 +118,36 @@ function saveCanvasData(elements: readonly ExcalidrawElement[], sessionId: strin
 
 /**
  * 将元素转换为摘要格式
+ * @param el 元素
+ * @param allElements 所有元素（用于查找关联的文本元素）
  */
-function summarizeElement(el: ExcalidrawElement): ElementSummary {
+function summarizeElement(el: ExcalidrawElement, allElements?: readonly ExcalidrawElement[]): ElementSummary {
+  let text = el.text
+  
+  // 如果是形状元素且有绑定的文本元素，获取绑定文本的内容
+  if (!text && el.boundElements && Array.isArray(el.boundElements) && allElements) {
+    const boundTextElement = el.boundElements.find(
+      (bound: { type: string; id: string }) => bound.type === 'text'
+    )
+    if (boundTextElement) {
+      const textElement = allElements.find(e => e.id === boundTextElement.id)
+      if (textElement && textElement.text) {
+        text = textElement.text
+      }
+    }
+  }
+  
   return {
     id: el.id,
     type: el.type,
-    text: el.text,
+    text,
     x: el.x,
     y: el.y,
     width: el.width,
     height: el.height,
     strokeColor: el.strokeColor,
     backgroundColor: el.backgroundColor,
+    containerId: el.containerId,  // 绑定的容器 id（文字元素会有此字段）
   }
 }
 
@@ -144,42 +164,59 @@ export const ExcalidrawWrapper = forwardRef<ExcalidrawWrapperRef, ExcalidrawWrap
 
     // 暴露方法给父组件
     useImperativeHandle(ref, () => ({
-      addElements: (newElements: ExcalidrawElement[]) => {
+      addElements: (newElements: ParsedElement[]) => {
         const api = excalidrawAPIRef.current
         if (!api || !newElements || newElements.length === 0) return
 
         const currentElements = api.getSceneElements()
-        const existingIds = new Set(currentElements.map((el: ExcalidrawElement) => el.id))
+        const existingElementsMap = new Map(
+          currentElements.map((el: ExcalidrawElement) => [el.id, el])
+        )
 
         // 分离需要更新的元素和需要添加的新元素
-        const elementsToUpdate: ExcalidrawElement[] = []
-        const elementsToAdd: ExcalidrawElement[] = []
+        const elementsToUpdate: ParsedElement[] = []
+        const elementsToAdd: ParsedElement[] = []
 
+        const validTypes = ['rectangle', 'ellipse', 'diamond', 'text', 'arrow', 'line']
+        
         newElements.forEach(el => {
-          if (existingIds.has(el.id)) {
-            // ID 已存在，更新该元素
+          if (existingElementsMap.has(el.id)) {
+            // ID 已存在，更新该元素（只需要 id 和要修改的属性）
             elementsToUpdate.push(el)
           } else {
-            // 新元素，添加到画布
-            elementsToAdd.push(el)
-            existingIds.add(el.id)
+            // 新元素必须有完整的必需字段
+            if (
+              el.type && 
+              validTypes.includes(el.type as string) &&
+              typeof el.x === 'number' && 
+              typeof el.y === 'number'
+            ) {
+              elementsToAdd.push(el)
+            }
           }
         })
 
         // 构建新的元素列表
         let updatedElements = [...currentElements]
 
-        // 更新已存在的元素
+        // 更新已存在的元素（只合并 AI 返回的属性，其他属性保持原值）
         if (elementsToUpdate.length > 0) {
           updatedElements = updatedElements.map(existingEl => {
             const update = elementsToUpdate.find(el => el.id === existingEl.id)
-            return update ? { ...existingEl, ...update } : existingEl
+            if (!update) return existingEl
+            // 只覆盖 AI 返回的属性，其他保持原值
+            return { ...existingEl, ...update }
           })
         }
 
-        // 添加新元素
+        // 添加新元素（需要添加默认值）
         if (elementsToAdd.length > 0) {
-          updatedElements = [...updatedElements, ...elementsToAdd]
+          const newElementsWithDefaults = elementsToAdd.map(el => ({
+            ...getDefaultElementProps(),
+            ...getTypeSpecificProps(el.type as string, el),
+            ...el,
+          }))
+          updatedElements = [...updatedElements, ...newElementsWithDefaults]
         }
 
         api.updateScene({
@@ -214,7 +251,8 @@ export const ExcalidrawWrapper = forwardRef<ExcalidrawWrapperRef, ExcalidrawWrap
       getCanvasState: () => {
         const api = excalidrawAPIRef.current
         if (!api) return []
-        return api.getSceneElements().map(summarizeElement)
+        const allElements = api.getSceneElements()
+        return allElements.map((el: ExcalidrawElement) => summarizeElement(el, allElements))
       },
       getSelectedElementsSummary: () => {
         const api = excalidrawAPIRef.current
@@ -222,9 +260,40 @@ export const ExcalidrawWrapper = forwardRef<ExcalidrawWrapperRef, ExcalidrawWrap
         try {
           const appState = api.getAppState()
           const selectedElementIds = appState?.selectedElementIds || {}
-          return api.getSceneElements()
-            .filter((el: ExcalidrawElement) => selectedElementIds[el.id] === true)
-            .map(summarizeElement)
+          const allElements = api.getSceneElements()
+          const allElementsMap = new Map(allElements.map((el: ExcalidrawElement) => [el.id, el]))
+          
+          // 获取选中的元素
+          const selectedElements = allElements.filter(
+            (el: ExcalidrawElement) => selectedElementIds[el.id] === true
+          )
+          
+          // 收集选中元素及其 boundElements
+          const resultIds = new Set<string>()
+          const result: ElementSummary[] = []
+          
+          for (const el of selectedElements) {
+            // 添加选中的元素
+            if (!resultIds.has(el.id)) {
+              resultIds.add(el.id)
+              result.push(summarizeElement(el, allElements))
+            }
+            
+            // 添加绑定的元素（如形状内的文字）
+            if (el.boundElements && Array.isArray(el.boundElements)) {
+              for (const bound of el.boundElements) {
+                if (!resultIds.has(bound.id)) {
+                  const boundEl = allElementsMap.get(bound.id)
+                  if (boundEl) {
+                    resultIds.add(bound.id)
+                    result.push(summarizeElement(boundEl, allElements))
+                  }
+                }
+              }
+            }
+          }
+          
+          return result
         } catch {
           return []
         }

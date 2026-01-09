@@ -78,6 +78,7 @@ points 是相对于 (x, y) 的偏移量数组，第一个点必须是 [0, 0]。
 
 ## 元素基础结构
 
+### 新建元素
 必需字段：id, type, x, y, width, height
 
 可选样式字段（有默认值）：
@@ -88,6 +89,16 @@ points 是相对于 (x, y) 的偏移量数组，第一个点必须是 [0, 0]。
 - strokeStyle: "solid" | "dashed" | "dotted"
 - roughness: 1 (0-2，0最平滑)
 - opacity: 100 (0-100)
+
+### 修改现有元素（非常重要！）
+当用户选中元素并要求修改时，**只返回 id 和需要修改的属性**，不需要修改的属性不要返回，系统会自动保留原值。
+
+示例：用户选中了一个蓝色矩形，要求改成红色
+错误做法（返回所有属性）：
+{"id":"box-1","type":"rectangle","x":100,"y":100,"width":150,"height":80,"strokeColor":"#e03131","backgroundColor":"#ffc9c9"}
+
+正确做法（只返回 id 和要修改的属性）：
+{"id":"box-1","strokeColor":"#e03131","backgroundColor":"#ffc9c9"}
 
 ## 基础形状
 {"id":"rect-1","type":"rectangle","x":100,"y":100,"width":150,"height":80,"backgroundColor":"#a5d8ff"}
